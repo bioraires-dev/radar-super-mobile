@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0A0D13">
+<title>Radar SUPER v14.5.1-R</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Terminal de sinais: uma coluna estreita, controlos em cima, lista de sinais por ordem de frescura.
+   Um só tema escuro, de propósito: as cores dos sinais são as do v14-R no TradingView. */
+:root {
+  --bg: #0A0D13; --panel: #11161F; --raise: #171E2A; --line: #222B3A;
+  --fg: #DCE3EE; --muted: #8592A8; --dim: #59647A;
+  --buy: #00FFA3; --sell: #FF2D95; --amber: #FFB547; --good: #3DDC97; --bad: #FF6B6B;
+  --cond: "Barlow Semi Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); }
+body { font: 14px/1.45 var(--mono); padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); -webkit-text-size-adjust: 100%; }
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 14px; padding-block: 18px 40px; display: grid; gap: 18px; }
+button, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.head h1 { font: 700 30px/1 var(--cond); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.head h1 b { color: var(--buy); font-weight: 700; }
+.head h1 i { color: var(--sell); font-style: normal; }
+.sub { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.stamp { color: var(--dim); font-size: 12px; text-align: right; }
+
+.ctrl { display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.row { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.field { display: grid; gap: 5px; min-width: 0; }
+.lbl { font: 600 11px/1 var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+select { width: 100%; background: var(--raise); border: 1px solid var(--line); border-radius: 7px; padding: 9px 26px 9px 10px; text-overflow: ellipsis; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 3px; }
+.seg button { border: 0; background: transparent; border-radius: 6px; padding: 8px 4px; color: var(--muted); cursor: pointer; font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--amber); color: #1A1305; font-weight: 700; }
+.seg.side button[data-v="BUY"][aria-pressed="true"] { background: var(--buy); color: #02140D; }
+.seg.side button[data-v="SELL"][aria-pressed="true"] { background: var(--sell); color: #1C0410; }
+.actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.go { border: 1px solid var(--amber); background: transparent; color: var(--amber); font-weight: 700; padding: 10px 18px; border-radius: 8px; cursor: pointer; }
+.go:disabled { opacity: .55; cursor: default; }
+.tog { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; user-select: none; }
+.tog input { appearance: none; width: 38px; height: 22px; border-radius: 11px; background: var(--raise); border: 1px solid var(--line); position: relative; margin: 0; cursor: pointer; transition: background .2s; }
+.tog input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--dim); transition: transform .2s, background .2s; }
+.tog input:checked { background: #3A2A0E; border-color: var(--amber); }
+.tog input:checked::after { transform: translateX(16px); background: var(--amber); }
+
+.prog { display: grid; gap: 6px; }
+.bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar span { display: block; height: 100%; width: 0; background: var(--amber); transition: width .25s; }
+.prog p { margin: 0; color: var(--muted); font-size: 12px; }
+.err { color: var(--bad); }
+
+.sum { display: grid; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip strong { color: var(--fg); font-weight: 700; }
+.chip.b strong { color: var(--buy); }
+.chip.s strong { color: var(--sell); }
+.src { color: var(--dim); font-size: 11.5px; }
+.src .ok { color: var(--muted); }
+.src .no { color: var(--bad); }
+
+.list { display: grid; border-top: 1px solid var(--line); }
+.sig { display: grid; gap: 10px; padding: 16px 2px; border-bottom: 1px solid var(--line); }
+.sig-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.who { display: grid; gap: 3px; min-width: 0; }
+.base { font: 700 22px/1 var(--cond); letter-spacing: .01em; }
+.pair { color: var(--dim); font-size: 12px; overflow-wrap: anywhere; }
+.pair .ex { color: var(--muted); }
+.badges { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.badge { font: 700 13px/1 var(--cond); letter-spacing: .06em; padding: 7px 10px; border-radius: 6px; white-space: nowrap; }
+.buy .badge { background: var(--buy); color: #02140D; }
+.sell .badge { background: var(--sell); color: #1C0410; }
+.new { font: 700 11px/1 var(--cond); letter-spacing: .12em; color: var(--amber); border: 1px solid var(--amber); border-radius: 5px; padding: 5px 6px; }
+.meta { color: var(--muted); font-size: 12px; }
+.meta .eng { color: var(--fg); }
+.meta .thin { color: var(--bad); }
+.proof { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.proof b { color: var(--fg); font-weight: 500; }
+.proof .edge b, .proof .edge { color: var(--amber); }
+.proof .tag { font: 700 10.5px/1 var(--cond); letter-spacing: .12em; color: var(--amber); border: 1px solid var(--amber); border-radius: 4px; padding: 3px 5px; margin-left: 4px; white-space: nowrap; }
+.nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.nums div { background: var(--panel); border-radius: 7px; padding: 8px 9px; min-width: 0; }
+.nums dt { font: 600 10.5px/1 var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; white-space: nowrap; }
+.nums dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.nums .sl dd { color: var(--bad); }
+.nums .tp dd { color: var(--good); }
+.pct { display: block; font-size: 12px; margin-top: 2px; }
+.up { color: var(--good); } .dn { color: var(--bad); }
+.foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.state { font: 600 12px/1 var(--cond); letter-spacing: .1em; text-transform: uppercase; padding: 5px 8px; border-radius: 5px; border: 1px solid var(--line); color: var(--fg); }
+.state.tp { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.state.sl { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.foot a { color: var(--amber); text-decoration: none; font-size: 12px; }
+.foot a:hover { text-decoration: underline; }
+.empty { padding: 28px 4px; color: var(--muted); }
+.empty strong { display: block; color: var(--fg); font: 600 18px/1.3 var(--cond); margin-bottom: 6px; }
+.note { color: var(--dim); font-size: 11.5px; line-height: 1.6; margin: 0; }
+
+@media (max-width: 480px) {
+  .wrap { padding-inline: 10px; padding-block: 12px 32px; }
+  .head h1 { font-size: 24px; }
+  .row { grid-template-columns: 1fr; }
+  .nums { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .actions { display: grid; grid-template-columns: 1fr; }
+  .go { width: 100%; }
+  .seg { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .seg button { min-height: 42px; }
+  .sig-top, .foot { align-items: flex-start; flex-direction: column; }
+  .badges { width: 100%; justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="head">
+    <div>
+      <h1>Radar <b>SUPER BUY</b> · <i>SELL</i></h1>
+      <div class="sub" id="sub">OB/FVG v14.5.1-R</div>
+    </div>
+    <div class="stamp" id="stamp">sem análise ainda</div>
+  </header>
+
+  <section class="ctrl" aria-label="Opções">
+    <div class="field">
+      <span class="lbl">Timeframe</span>
+      <div class="seg tf" id="tf" role="group" aria-label="Timeframe">
+        <button type="button" data-v="1h">1H</button>
+        <button type="button" data-v="4h">4H</button>
+        <button type="button" data-v="1d">1D</button>
+        <button type="button" data-v="1w">1W</button>
+      </div>
+    </div>
+    <div class="row">
+      <label class="field"><span class="lbl">Exchange</span>
+        <select id="ex">
+          <option value="all">Todas (a mais líquida)</option>
+          <option value="binance">Binance</option>
+          <option value="gate">Gate</option>
+          <option value="okx">OKX</option>
+          <option value="bybit">Bybit</option>
+          <option value="mexc">MEXC</option>
+        </select></label>
+      <label class="field"><span class="lbl">Mercado</span>
+        <select id="market"><option value="fut">Futuros USDT</option><option value="spot">Spot USDT</option></select></label>
+      <label class="field"><span class="lbl">Moedas (capitalização)</span>
+        <select id="top"><option value="50">Top 50</option><option value="100">Top 100</option><option value="200">Top 200</option><option value="300">Top 300</option><option value="500">Top 500</option></select></label>
+      <label class="field"><span class="lbl">Janela</span>
+        <select id="win"><option value="1">1 vela</option><option value="3">3 velas</option><option value="5">5 velas</option><option value="10">10 velas</option></select></label>
+      <label class="field"><span class="lbl">Corte de qualidade</span>
+        <select id="qual"><option value="0">0 (tudo)</option><option value="50">50 (defeito)</option><option value="70">70</option><option value="85">85</option><option value="90">90</option><option value="95">95</option></select></label>
+    </div>
+    <div class="field">
+      <span class="lbl">Mostrar</span>
+      <div class="seg side" id="side" role="group" aria-label="Tipo de sinal">
+        <button type="button" data-v="all">Todos</button>
+        <button type="button" data-v="BUY">SUPER BUY</button>
+        <button type="button" data-v="SELL">SUPER SELL</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="go" id="go" type="button">Analisar agora</button>
+      <label class="tog"><input type="checkbox" id="auto"> Repetir a cada 5 min</label>
+      <label class="tog"><input type="checkbox" id="active"> Só ativos</label>
+      <label class="tog"><input type="checkbox" id="hard"> Veto 6+</label>
+    </div>
+  </section>
+
+  <section class="prog" id="prog" hidden>
+    <div class="bar"><span id="barfill"></span></div>
+    <p id="progtxt">a preparar…</p>
+  </section>
+
+  <section class="sum" id="sum" aria-live="polite"></section>
+  <section class="list" id="list" aria-live="polite"></section>
+
+  <p class="note" id="note"></p>
+</main>
+
+<script>
+(function (root) {
+  'use strict';
+
+  const P = {
+    emaFast: 21, emaSlow: 72, atrLen: 14,
+    compThr: 0.003, compAvg: 14,
+    cvdLookback: 50, cvdSmooth: 5,
+    stochK: 14, stochD: 3, stochSmooth: 3, stochOS: 25, stochOB: 75,
+    extThr: 2.5, rocLen: 3, rsiLen: 14, divLookback: 10, bbLen: 20, bbMult: 2.0,
+    minScoreCont: 3, minScoreRev: 4,
+    zoneTolATR: 0.5, maxStretchATR: 2.0,
+    minRR: 1.5, swingLen: 10, stopBufATR: 0.25, minStopATR: 0.3, maxStopATR: 3.0,
+    maxTargetATR: 12.0, magnetMaxATR: 6.0, rrFallback: 2.0,
+    cooldown: 6, reentryATR: 1.5,
+    atrRegLen: 50, expThr: 1.25, exitThr: 1.0, slopeLen: 10, slopeMin: 0.5,
+    brkLen: 20, brkVolMult: 2.0, brkBodyATR: 1.0, brkClosePct: 0.70, brkCompBars: 30,
+    clxVolMult: 2.0, clxWickPct: 0.35, clxClosePct: 0.50, clxRangeATR: 1.5,
+    clxExtATR: 2.0, clxLen: 20, clxMinRej: 2,
+    clxDryMult: 0.70, clxDryFade: 20, topRelock: 10,
+    minRiskATR: 0.8, panelBase: 3,
+    obMax: 10, fvgMax: 10, pivot: 1,
+  };
+
+  const NA = NaN;
+  const isNa = (x) => x !== x || x === undefined || x === null;
+  function sma(src, n) {
+    const out = new Array(src.length).fill(NA);
+    for (let i = n - 1; i < src.length; i++) {
+      let s = 0, ok = true;
+      for (let k = i - n + 1; k <= i; k++) { if (isNa(src[k])) { ok = false; break; } s += src[k]; }
+      out[i] = ok ? s / n : NA;
+    }
+    return out;
+  }
+  function sum(src, n) {
+    const out = new Array(src.length).fill(NA);
+    for (let i = n - 1; i < src.length; i++) {
+      let s = 0, ok = true;
+      for (let k = i - n + 1; k <= i; k++) { if (isNa(src[k])) { ok = false; break; } s += src[k]; }
+      out[i] = ok ? s : NA;
+    }
+    return out;
+  }
+  function ema(src, n) {
+    const a = 2 / (n + 1), out = new Array(src.length).fill(NA);
+    let prev = NA;
+    for (let i = 0; i < src.length; i++) {
+      const x = src[i];
+      if (isNa(x)) { out[i] = NA; prev = NA; continue; }
+      prev = isNa(prev) ? x : a * x + (1 - a) * prev;
+      out[i] = prev;
+    }
+    return out;
+  }
+  function rma(src, n) {
+    const a = 1 / n, s = sma(src, n), out = new Array(src.length).fill(NA);
+    let prev = NA;
+    for (let i = 0; i < src.length; i++) {
+      if (isNa(prev)) prev = s[i];
+      else prev = isNa(src[i]) ? NA : a * src[i] + (1 - a) * prev;
+      out[i] = prev;
+    }
+    return out;
+  }
+  function highest(src, n) {
+    const out = new Array(src.length).fill(NA);
+    for (let i = n - 1; i < src.length; i++) {
+      let m = -Infinity;
+      for (let k = i - n + 1; k <= i; k++) { if (isNa(src[k])) { m = NA; break; } if (src[k] > m) m = src[k]; }
+      out[i] = m;
+    }
+    return out;
+  }
+  function lowest(src, n) {
+    const out = new Array(src.length).fill(NA);
+    for (let i = n - 1; i < src.length; i++) {
+      let m = Infinity;
+      for (let k = i - n + 1; k <= i; k++) { if (isNa(src[k])) { m = NA; break; } if (src[k] < m) m = src[k]; }
+      out[i] = m;
+    }
+    return out;
+  }
+  function stdevPop(src, n) {
+    const m = sma(src, n), out = new Array(src.length).fill(NA);
+    for (let i = n - 1; i < src.length; i++) {
+      if (isNa(m[i])) continue;
+      let s = 0;
+      for (let k = i - n + 1; k <= i; k++) s += (src[k] - m[i]) ** 2;
+      out[i] = Math.sqrt(s / n);
+    }
+    return out;
+  }
+  const at = (arr, i) => (i < 0 ? NA : arr[i]);
+  function atrSeries(h, l, c, n) {
+    const tr = h.map((_, i) => i === 0 ? h[i] - l[i]
+      : Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])));
+    return rma(tr, n);
+  }
+  function rsiSeries(c, n) {
+    const up = c.map((x, i) => i === 0 ? NA : Math.max(x - c[i - 1], 0));
+    const dn = c.map((x, i) => i === 0 ? NA : -Math.min(x - c[i - 1], 0));
+    const ru = rma(up, n), rd = rma(dn, n);
+    return c.map((_, i) => isNa(ru[i]) || isNa(rd[i]) ? NA : rd[i] === 0 ? 100 : ru[i] === 0 ? 0 : 100 - 100 / (1 + ru[i] / rd[i]));
+  }
+  function slowKSeries(h, l, c) {
+    const hh = highest(h, P.stochK), ll = lowest(l, P.stochK);
+    const raw = c.map((x, i) => { const d = hh[i] - ll[i]; return isNa(d) || d === 0 ? NA : 100 * (x - ll[i]) / d; });
+    return sma(raw, P.stochSmooth);
+  }
+  const DAY = 86400000, WEEK = 7 * DAY, MON0 = 4 * DAY;
+  function htfFor(tfMs) {
+    const s = tfMs / 1000;
+    if (s <= 60) return 15 * 60000;
+    if (s <= 300) return 3600000;
+    if (s <= 1800) return 4 * 3600000;
+    if (s <= 14400) return DAY;
+    if (s <= 86400) return WEEK;
+    return MONTH;
+  }
+  const MONTH = 30 * DAY;
+  function periodStart(t, htfMs) {
+    if (htfMs === WEEK) return t - ((((t - MON0) % WEEK) + WEEK) % WEEK);
+    if (htfMs === MONTH) { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); }
+    return t - (t % htfMs);
+  }
+  function periodEnd(t, htfMs) {
+    if (htfMs === MONTH) { const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); }
+    return periodStart(t, htfMs) + htfMs;
+  }
+  function aggregate(bars, htfMs) {
+    const out = [];
+    for (const b of bars) {
+      const ps = periodStart(b.t, htfMs);
+      const last = out[out.length - 1];
+      const hasD = b.d !== undefined && !isNa(b.d);
+      if (last && last.t === ps) {
+        last.h = Math.max(last.h, b.h); last.l = Math.min(last.l, b.l); last.c = b.c; last.v += b.v;
+        if (hasD && last.d !== undefined) last.d += b.d; else delete last.d;
+      } else {
+        const nb = { t: ps, o: b.o, h: b.h, l: b.l, c: b.c, v: b.v };
+        if (hasD) nb.d = b.d;
+        out.push(nb);
+      }
+    }
+    return out;
+  }
+
+  function run(bars, tfMs, htfBars, opts) {
+    const O = Object.assign({ minQuality: 50, hardHideTop: false }, opts || {});
+    const N = bars.length;
+    const o = bars.map(b => b.o), h = bars.map(b => b.h), l = bars.map(b => b.l);
+    const c = bars.map(b => b.c), v = bars.map(b => b.v);
+    const EPS = 1e-12;
+    const emaF = ema(c, P.emaFast), emaS = ema(c, P.emaSlow);
+    const atr = atrSeries(h, l, c, P.atrLen);
+    const atrAvg = sma(atr, P.compAvg);
+    const isComp = c.map((x, i) => Math.abs(emaF[i] - emaS[i]) / x < P.compThr && atr[i] < atrAvg[i]);
+
+    const delta = bars.map(b => {
+      if (b.d !== undefined && !isNa(b.d)) return b.d;
+      const r = b.h - b.l; return r > 0 ? b.v * (b.c - b.l) / r - b.v * (b.h - b.c) / r : 0;
+    });
+    const cvd = ema(sum(delta, P.cvdLookback), P.cvdSmooth);
+    const cvdSlope = Math.max(1, Math.round(P.cvdSmooth / 2));
+    const cvdRising = cvd.map((x, i) => x > at(cvd, i - cvdSlope));
+    const cvdFalling = cvd.map((x, i) => x < at(cvd, i - cvdSlope));
+    const slowK = slowKSeries(h, l, c);
+    const emaDev = c.map((x, i) => (x - emaS[i]) / atr[i]);
+    const roc = c.map((x, i) => i < P.rocLen ? NA : (x - c[i - P.rocLen]) / c[i - P.rocLen] * 100);
+    const rsi = rsiSeries(c, P.rsiLen);
+    const lowL10 = lowest(l, P.divLookback), highH10 = highest(h, P.divLookback);
+    const lowR10 = lowest(rsi, P.divLookback), highR10 = highest(rsi, P.divLookback);
+    const bbMid = sma(c, P.bbLen), bbSd = stdevPop(c, P.bbLen);
+    const bbUp = bbMid.map((m, i) => m + P.bbMult * bbSd[i]), bbLo = bbMid.map((m, i) => m - P.bbMult * bbSd[i]);
+    const volAvg = sma(v, 20);
+    const lowN = lowest(l, P.swingLen), highN = highest(h, P.swingLen);
+    const atrLong = atrSeries(h, l, c, P.atrRegLen);
+    const hi20 = highest(h, P.brkLen), lo20 = lowest(l, P.brkLen);
+    const clxHi = highest(h, P.clxLen), clxLo = lowest(l, P.clxLen);
+
+    const top = new Array(N).fill(NA), bottom = new Array(N).fill(NA);
+    for (let i = 0; i < N; i++) {
+      const pH = i >= 2 && h[i - 1] > h[i - 2] && h[i - 1] >= h[i];
+      const pL = i >= 2 && l[i - 1] < l[i - 2] && l[i - 1] <= l[i];
+      top[i] = pH ? h[i - 1] : (i > 0 ? top[i - 1] : NA);
+      bottom[i] = pL ? l[i - 1] : (i > 0 ? bottom[i - 1] : NA);
+    }
+
+    const htfMs = htfFor(tfMs);
+    const H = (htfBars && htfBars.length) ? htfBars : aggregate(bars, htfMs);
+    const Hc = H.map(b => b.c);
+    const hF = ema(Hc, P.emaFast), hS = ema(Hc, P.emaSlow);
+    const hK = slowKSeries(H.map(b => b.h), H.map(b => b.l), Hc);
+    const hIdx = new Map(H.map((b, j) => [b.t, j]));
+    function htfAt(i) {
+      const ps = periodStart(bars[i].t, htfMs);
+      const j = hIdx.get(ps);
+      if (j === undefined) return null;
+      const lastOfPeriod = bars[i].t + tfMs >= periodEnd(bars[i].t, htfMs);
+      const k = lastOfPeriod ? j : j - 1;
+      return k < 0 ? null : { f: hF[k], s: hS[k], K: hK[k] };
+    }
+
+    const bullOB = [], bearOB = [], bullFVG = [], bearFVG = [];
+    let lastComp = -999, regime = 0;
+    let lastBar = -999, lastDir = 0, lastScore = 0, lastPrice = NA;
+    let topArmed = true, topSigLow = NA, topSigHi = NA, topSigBar = -999;
+    const signals = [];
+    const regimeAt = new Array(N).fill(0);
+
+    const push = (arr, bx, max) => { if (arr.length > max) arr.shift(); arr.push(bx); };
+    const control = (arr, i) => {
+      for (const bx of arr) {
+        const touch = (h[i] > bx.bot && l[i] < bx.bot) || (h[i] > bx.top && l[i] < bx.top);
+        if (bx.right === i && !touch) bx.right = i + 1;
+      }
+    };
+    const alive = (bx, i) => bx.right >= i;
+
+    for (let i = 0; i < N; i++) {
+      const A = atr[i];
+      if (isComp[i]) lastComp = i;
+
+      if (i >= 2) {
+        if (c[i - 2] < o[i - 2] && c[i - 1] > o[i - 1] && c[i - 1] > h[i - 2])
+          push(bullOB, { top: h[i - 2], bot: Math.min(l[i - 2], l[i - 1]), right: i }, P.obMax);
+        if (c[i - 2] > o[i - 2] && c[i - 1] < o[i - 1] && c[i - 1] < l[i - 2])
+          push(bearOB, { top: Math.max(h[i - 2], h[i - 1]), bot: l[i - 2], right: i }, P.obMax);
+      }
+      control(bearOB, i); control(bullOB, i);
+      if (i >= 2) {
+        if (l[i] > h[i - 2]) push(bullFVG, { top: l[i], bot: h[i - 2], right: i }, P.fvgMax);
+        if (h[i] < l[i - 2]) push(bearFVG, { top: l[i - 2], bot: h[i], right: i }, P.fvgMax);
+      }
+      control(bearFVG, i); control(bullFVG, i);
+
+      if (isNa(A)) { regimeAt[i] = regime; continue; }
+
+      const tol = P.zoneTolATR * A;
+      const near = (arr) => arr.some(bx => alive(bx, i) && l[i] <= bx.top + tol && h[i] >= bx.bot - tol);
+      const nearBull = near(bullOB) || near(bullFVG) || (!isNa(bottom[i]) && Math.abs(l[i] - bottom[i]) <= tol);
+      const nearBear = near(bearOB) || near(bearFVG) || (!isNa(top[i]) && Math.abs(h[i] - top[i]) <= tol);
+      const edgeBelow = (arr, ref, useTop) => { let b = NA; for (const bx of arr) if (alive(bx, i)) { const x = useTop ? bx.top : bx.bot; if (x < ref && (isNa(b) || x > b)) b = x; } return b; };
+      const edgeAbove = (arr, ref, useTop) => { let b = NA; for (const bx of arr) if (alive(bx, i)) { const x = useTop ? bx.top : bx.bot; if (x > ref && (isNa(b) || x < b)) b = x; } return b; };
+
+      const bullExt = emaDev[i] < -P.extThr, bearExt = emaDev[i] > P.extThr;
+      const momBull = at(roc, i - 1) < -3 && roc[i] > at(roc, i - 1) && c[i] > o[i];
+      const momBear = at(roc, i - 1) > 3 && roc[i] < at(roc, i - 1) && c[i] < o[i];
+      const bullDiv = l[i] < at(lowL10, i - 1) && rsi[i] > at(lowR10, i - 1) && rsi[i] < 50;
+      const bearDiv = h[i] > at(highH10, i - 1) && rsi[i] < at(highR10, i - 1) && rsi[i] > 50;
+      const rng = h[i] - l[i], uW = h[i] - Math.max(o[i], c[i]), lW = Math.min(o[i], c[i]) - l[i], body = Math.abs(c[i] - o[i]);
+      const bullPin = rng > 0 && lW >= 0.55 * rng && body <= 0.35 * rng;
+      const bearPin = rng > 0 && uW >= 0.55 * rng && body <= 0.35 * rng;
+      const bullEng = i > 0 && c[i] > o[i] && c[i] > o[i - 1] && o[i] <= c[i - 1] && o[i - 1] > c[i - 1];
+      const bearEng = i > 0 && c[i] < o[i] && c[i] < o[i - 1] && o[i] >= c[i - 1] && o[i - 1] < c[i - 1];
+      const volClxBull = v[i] > 3 * volAvg[i] && c[i] > o[i], volClxBear = v[i] > 3 * volAvg[i] && c[i] < o[i];
+      const volSurge = v[i] > 1.5 * volAvg[i];
+
+      const C = (x) => (x ? 1 : 0);
+      const bC1c = emaF[i] > emaS[i] && c[i] > emaF[i], sC1c = emaF[i] < emaS[i] && c[i] < emaF[i];
+      const bC2 = slowK[i] < P.stochOS, sC2 = slowK[i] > P.stochOB;
+      const bC3 = momBull || bullDiv, sC3 = momBear || bearDiv;
+      const bC4 = cvdRising[i] || (volSurge && c[i] > o[i]) || volClxBull;
+      const sC4 = cvdFalling[i] || (volSurge && c[i] < o[i]) || volClxBear;
+      const bC6 = bullPin || bullEng || l[i] <= bbLo[i], sC6 = bearPin || bearEng || h[i] >= bbUp[i];
+      const rest = (a, b, d, e, f) => C(a) + C(b) + C(d) + C(e) + C(f);
+      const sBullCont = C(bC1c) + rest(bC2, bC3, bC4, nearBull, bC6);
+      const sBullRev = C(bullExt) + rest(bC2, bC3, bC4, nearBull, bC6);
+      const sBearCont = C(sC1c) + rest(sC2, sC3, sC4, nearBear, sC6);
+      const sBearRev = C(bearExt) + rest(sC2, sC3, sC4, nearBear, sC6);
+
+      const buf = P.stopBufATR * A;
+      const zL = edgeBelow(bullOB, c[i], false), zS = edgeAbove(bearOB, c[i], true);
+      const swL = lowN[i] - buf, swS = highN[i] + buf;
+      const baseL = isNa(zL) ? swL : Math.max(zL - buf, swL);
+      const baseS = isNa(zS) ? swS : Math.min(zS + buf, swS);
+      const magDist = P.magnetMaxATR * A;
+      const magBelow = (arr) => { let b = NA; for (const bx of arr) if (alive(bx, i) && bx.top < baseL && c[i] - bx.bot <= magDist && (isNa(b) || bx.bot < b)) b = bx.bot; return b; };
+      const magAbove = (arr) => { let b = NA; for (const bx of arr) if (alive(bx, i) && bx.bot > baseS && bx.top - c[i] <= magDist && (isNa(b) || bx.top > b)) b = bx.top; return b; };
+      const mbo = magBelow(bullOB), mbf = magBelow(bullFVG);
+      const magB = isNa(mbo) ? mbf : isNa(mbf) ? mbo : Math.min(mbo, mbf);
+      const mso = magAbove(bearOB), msf = magAbove(bearFVG);
+      const magS = isNa(mso) ? msf : isNa(msf) ? mso : Math.max(mso, msf);
+      let stopL = !isNa(magB) ? Math.min(baseL, magB - buf) : baseL;
+      let stopS = !isNa(magS) ? Math.max(baseS, magS + buf) : baseS;
+
+      const volExp = atrLong[i] > 0 ? A / atrLong[i] : 1.0;
+      const slope = (emaF[i] - at(emaF, i - P.slopeLen)) / A;
+      if (volExp >= P.expThr && emaF[i] > emaS[i] && slope >= P.slopeMin) regime = 1;
+      else if (volExp >= P.expThr && emaF[i] < emaS[i] && slope <= -P.slopeMin) regime = -1;
+      else if (volExp < P.exitThr) regime = 0;
+      regimeAt[i] = regime;
+      const regUp = regime === 1, regDn = regime === -1;
+
+      const bHi = at(hi20, i - 1), bLo = at(lo20, i - 1);
+      const bRng = Math.max(EPS, rng);
+      const bComp = P.brkCompBars === 0 || (i - lastComp) <= P.brkCompBars;
+      const bVol = v[i] >= P.brkVolMult * volAvg[i], bBody = body >= P.brkBodyATR * A;
+      const brkL = c[i] > bHi && bVol && bBody && (c[i] - l[i]) / bRng >= P.brkClosePct && (bComp || regime === 1);
+      const brkS = c[i] < bLo && bVol && bBody && (h[i] - c[i]) / bRng >= P.brkClosePct && (bComp || regime === -1);
+      if (brkL) stopL = Math.min(l[i], bHi) - buf;
+      if (brkS) stopS = Math.max(h[i], bLo) + buf;
+
+      const cR = Math.max(EPS, rng);
+      const cVol = (k) => v[k] >= P.clxVolMult * volAvg[k];
+      const cBig = (k) => Math.max(EPS, h[k] - l[k]) >= P.clxRangeATR * atr[k];
+      const cDry = (k) => v[k] <= P.clxDryMult * volAvg[k] && volAvg[k] < at(volAvg, k - P.clxDryFade);
+      const sigUp = (k) => (cVol(k) && cBig(k)) || cDry(k);
+      const sigDn = (k) => cVol(k) && cBig(k);
+      const dryAt = (k) => !(cVol(k) && cBig(k)) && cDry(k);
+      const newHi = (k) => h[k] >= clxHi[k], newLo = (k) => l[k] <= clxLo[k];
+      const hardUp = newHi(i) && sigUp(i) && emaDev[i] >= P.clxExtATR;
+      const hardDn = newLo(i) && sigDn(i) && emaDev[i] <= -P.clxExtATR;
+      const rejUp = C(uW / cR >= P.clxWickPct) + C((c[i] - l[i]) / cR <= P.clxClosePct) + C(c[i] < o[i]);
+      const rejDn = C(lW / cR >= P.clxWickPct) + C((h[i] - c[i]) / cR <= P.clxClosePct) + C(c[i] > o[i]);
+      const topBar = hardUp && rejUp >= P.clxMinRej, botBar = hardDn && rejDn >= P.clxMinRej;
+      const topCfm = i > 0 && newHi(i - 1) && sigUp(i - 1) && c[i] < l[i - 1] && emaDev[i - 1] >= P.clxExtATR;
+      const botCfm = i > 0 && newLo(i - 1) && sigDn(i - 1) && c[i] > h[i - 1] && emaDev[i - 1] <= -P.clxExtATR;
+      if (!topArmed && ((!isNa(topSigLow) && c[i] < topSigLow) || (!isNa(topSigHi) && h[i] > topSigHi) || (i - topSigBar >= P.topRelock))) topArmed = true;
+      const topRaw = (topBar || topCfm) && topArmed, botRaw = botBar || botCfm;
+      if (topRaw) { topArmed = false; topSigLow = l[i]; topSigHi = h[i]; topSigBar = i; }
+      if (topRaw) stopS = Math.max(h[i], topCfm ? h[i - 1] : h[i]) + buf;
+      if (botRaw) stopL = Math.min(l[i], botCfm ? l[i - 1] : l[i]) - buf;
+
+      const riskL = c[i] - stopL, riskS = stopS - c[i];
+      const riskLOk = riskL >= P.minStopATR * A && riskL <= P.maxStopATR * A;
+      const riskSOk = riskS >= P.minStopATR * A && riskS <= P.maxStopATR * A;
+
+      const maxT = P.maxTargetATR * A;
+      const up = [edgeAbove(bearOB, c[i], false), edgeAbove(bearFVG, c[i], false), top[i] > c[i] ? top[i] : NA,
+        emaF[i] > c[i] ? emaF[i] : NA, emaS[i] > c[i] ? emaS[i] : NA, bbMid[i] > c[i] ? bbMid[i] : NA, bbUp[i]];
+      const dn = [edgeBelow(bullOB, c[i], true), edgeBelow(bullFVG, c[i], true), bottom[i] < c[i] ? bottom[i] : NA,
+        emaF[i] < c[i] ? emaF[i] : NA, emaS[i] < c[i] ? emaS[i] : NA, bbMid[i] < c[i] ? bbMid[i] : NA, bbLo[i]];
+      let pkL = NA; for (const x of up) if (!isNa(x) && x >= c[i] + P.minRR * riskL && x - c[i] <= maxT && (isNa(pkL) || x < pkL)) pkL = x;
+      let pkS = NA; for (const x of dn) if (!isNa(x) && x <= c[i] - P.minRR * riskS && c[i] - x <= maxT && (isNa(pkS) || x > pkS)) pkS = x;
+      const tpL = !isNa(pkL) ? pkL : c[i] + Math.min(maxT, P.rrFallback * riskL);
+      const tpS = !isNa(pkS) ? pkS : c[i] - Math.min(maxT, P.rrFallback * riskS);
+      const rrL = riskL > 0 ? (tpL - c[i]) / riskL : 0, rrS = riskS > 0 ? (c[i] - tpS) / riskS : 0;
+
+      const compOk = !isComp[i];
+      const baseBuy = compOk && c[i] > o[i] && nearBull && (c[i] - emaF[i]) / A <= P.maxStretchATR && rrL >= P.minRR && riskLOk;
+      const baseSell = compOk && c[i] < o[i] && nearBear && (emaF[i] - c[i]) / A <= P.maxStretchATR && rrS >= P.minRR && riskSOk;
+      const hx = htfAt(i);
+      const htfUp = !!hx && !isNa(hx.f) && !isNa(hx.s) && hx.f > hx.s;
+      const htfDn = !!hx && !isNa(hx.f) && !isNa(hx.s) && hx.f < hx.s;
+      const htfOS = !!hx && !isNa(hx.K) && hx.K < P.stochOS + 10;
+      const htfOBz = !!hx && !isNa(hx.K) && hx.K > P.stochOB - 10;
+
+      const reentry = (dir, sc) => (i - lastBar >= P.cooldown) &&
+        (lastDir !== dir || sc >= lastScore + 2 || isNa(lastPrice) || Math.abs(c[i] - lastPrice) >= P.reentryATR * A);
+
+      const buyCont = baseBuy && (htfUp || regUp) && sBullCont >= P.minScoreCont && reentry(1, sBullCont) && !regDn;
+      const sellCont = baseSell && (htfDn || regDn) && sBearCont >= P.minScoreCont && reentry(-1, sBearCont) && !regUp;
+      const buyRev = baseBuy && (htfUp || htfOS) && bullExt && sBullRev >= P.minScoreRev && reentry(1, sBullRev) && !regDn;
+      const sellRev = baseSell && (htfDn || htfOBz) && bearExt && sBearRev >= P.minScoreRev && reentry(-1, sBearRev) && !regUp;
+      const buyBrk = brkL && riskL > 0 && reentry(1, sBullCont);
+      const sellBrk = brkS && riskS > 0 && reentry(-1, sBearCont);
+      const sellTop = topRaw && riskS > 0;
+      const buyBot = botRaw && riskL > 0;
+
+      const buySig = buyBot || buyBrk || buyRev || buyCont;
+      const sellSig = (sellTop || sellBrk || sellRev || sellCont) && !buySig;
+
+      const proofOf = (eng, dir) => {
+        if (eng === 'rompimento') {
+          return [
+            { k: 'Volume', v: v[i] / volAvg[i], thr: P.brkVolMult, u: '×' },
+            { k: 'Corpo', v: body / A, thr: P.brkBodyATR, u: ' ATR' },
+            { k: 'Fecho no extremo', v: (dir === 1 ? c[i] - l[i] : h[i] - c[i]) / bRng * 100, thr: P.brkClosePct * 100, u: '%' },
+          ];
+        }
+        const k = (eng === 'clímax cfm' || eng === 'seco cfm') ? i - 1 : i;
+        if (eng === 'seco' || eng === 'seco cfm') {
+          return [
+            { k: 'Volume', v: v[k] / volAvg[k], thr: P.clxDryMult, u: '×', lte: true },
+            { k: 'Média de volume vs ' + P.clxDryFade + ' barras', v: volAvg[k] / at(volAvg, k - P.clxDryFade) * 100, thr: 100, u: '%', lte: true },
+            { k: 'Distância à EMA72', v: Math.abs(emaDev[k]), thr: P.clxExtATR, u: ' ATR' },
+          ];
+        }
+        return [
+          { k: 'Volume', v: v[k] / volAvg[k], thr: P.clxVolMult, u: '×' },
+          { k: 'Amplitude', v: (h[k] - l[k]) / atr[k], thr: P.clxRangeATR, u: ' ATR' },
+          { k: 'Distância à EMA72', v: Math.abs(emaDev[k]), thr: P.clxExtATR, u: ' ATR' },
+        ];
+      };
+
+      const noiseBuyOk  = riskL >= P.minRiskATR * A;
+      const noiseSellOk = riskS >= P.minRiskATR * A;
+      const qualBuy  = buyBot  ? 90 : (45 + (noiseBuyOk  ? 14 : 0) + (regUp ? 20 : 10) + 12);
+      const qualSell = sellTop ? 90 : (45 + (noiseSellOk ? 14 : 0) + (regDn ? 20 : 10) + 12);
+      const buyOk  = qualBuy  >= O.minQuality && (!O.hardHideTop || sBullCont < P.panelBase + 3);
+      const sellOk = qualSell >= O.minQuality && (!O.hardHideTop || sBearCont < P.panelBase + 3);
+
+      if (buySig && (buyBot || buyBrk) && buyOk) {
+        const eng = botCfm ? 'clímax cfm' : buyBot ? 'clímax' : 'rompimento';
+        signals.push({ i, t: bars[i].t, side: 'BUY', engine: eng, proof: proofOf(eng, 1),
+          price: c[i], stop: stopL, tp: tpL, rr: rrL, tpStruct: !isNa(pkL), regime, qual: qualBuy });
+      }
+      if (sellSig && (sellTop || sellBrk) && sellOk) {
+        const dry = sellTop && dryAt(topCfm ? i - 1 : i);
+        const eng = sellTop ? (topCfm ? (dry ? 'seco cfm' : 'clímax cfm') : (dry ? 'seco' : 'clímax')) : 'rompimento';
+        signals.push({ i, t: bars[i].t, side: 'SELL', engine: eng, proof: proofOf(eng, -1),
+          price: c[i], stop: stopS, tp: tpS, rr: rrS, tpStruct: !isNa(pkS), regime, qual: qualSell });
+      }
+
+      if (buySig) {
+        const isRev = buyRev && !buyBrk && !buyBot;
+        lastBar = i; lastDir = 1; lastScore = isRev ? sBullRev : sBullCont; lastPrice = c[i];
+      }
+      if (sellSig) {
+        const isRev = sellRev && !sellBrk && !sellTop;
+        lastBar = i; lastDir = -1; lastScore = isRev ? sBearRev : sBearCont; lastPrice = c[i];
+      }
+    }
+
+    for (const s of signals) {
+      s.outcome = 'aberto'; s.outcomeBar = null;
+      for (let k = s.i + 1; k < N; k++) {
+        const hitS = s.side === 'BUY' ? l[k] <= s.stop : h[k] >= s.stop;
+        const hitT = s.side === 'BUY' ? h[k] >= s.tp : l[k] <= s.tp;
+        if (hitS) { s.outcome = 'SL'; s.outcomeBar = k; break; }
+        if (hitT) { s.outcome = 'TP'; s.outcomeBar = k; break; }
+      }
+      s.barsAgo = N - 1 - s.i;
+      s.last = c[N - 1];
+      s.movePct = (s.side === 'BUY' ? 1 : -1) * (c[N - 1] - s.price) / s.price * 100;
+    }
+    return { signals, regime: regimeAt[N - 1] || 0, lastClose: c[N - 1], bars: N };
+  }
+
+  const api = { run, aggregate, htfFor, periodStart, params: P, DAY, WEEK, MONTH };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.V14R = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+(function () {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const { DAY, WEEK, MONTH } = V14R;
+  const TFMS = { '1h': 3600e3, '4h': 4 * 3600e3, '1d': DAY, '1w': WEEK };
+  const TFNAME = { '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W' };
+  const MAX_WIN = 10, CONC = 10, AUTO_MS = 5 * 60000, MIN_BARS = 120, THIN_BARS = 400;
+  const EXCL = new Set(['USDT', 'USDC', 'FDUSD', 'TUSD', 'USDP', 'DAI', 'BUSD', 'EUR', 'EURI', 'AEUR', 'USD1', 'XUSD', 'BFUSD', 'USDE', 'SUSDE', 'PYUSD', 'RLUSD',
+    'GBP', 'TRY', 'BRL', 'USDS', 'UST', 'USTC', 'SUSD', 'EURC', 'USDQ', 'USD0', 'USDD', 'FRAX', 'USDX', 'USDG', 'USDF', 'USDTB', 'GHO', 'CRVUSD', 'LUSD', 'DOLA',
+    'WBTC', 'WETH', 'STETH', 'WSTETH', 'WEETH', 'CBBTC', 'RETH', 'METH', 'EZETH', 'LBTC', 'SOLVBTC', 'BTCB', 'CBETH', 'JITOSOL', 'MSOL', 'BNSOL', 'WBETH', 'RSETH',
+    'WBNB', 'WTRX', 'WAVAX', 'WSOL', 'BUIDL', 'OUSG', 'USYC', 'JLP', 'BSC-USD', 'TBTC', 'CLBTC', 'UNIBTC', 'PUMPBTC', 'FBTC', 'EETH', 'OSETH', 'SAVAX', 'STKAAVE']);
+  const EXNAME = { binance: 'Binance', gate: 'Gate', okx: 'OKX', bybit: 'Bybit', mexc: 'MEXC' };
+  const EXTV = { binance: 'BINANCE', gate: 'GATEIO', okx: 'OKX', bybit: 'BYBIT', mexc: 'MEXC' };
+
+  const cfg = { tf: '1d', ex: 'all', market: 'fut', top: 100, win: 3, side: 'all', auto: true, active: false,
+    minQuality: 50, hardHideTop: false };
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem memória local: segue */ } },
+  };
+  Object.assign(cfg, store.get('radar.cfg') || {});
+  if (!EXNAME[cfg.ex] && cfg.ex !== 'all') cfg.ex = 'all';
+  let data = null;
+  let running = false;
+
+  const nf = {};
+  const fmtN = (x, d) => (nf[d] || (nf[d] = new Intl.NumberFormat('pt-PT', { minimumFractionDigits: d, maximumFractionDigits: d }))).format(x);
+  function fmtP(p) {
+    if (!isFinite(p)) return '—';
+    const a = Math.abs(p);
+    const d = a >= 1000 ? 2 : a >= 100 ? 3 : a >= 1 ? 4 : a >= 0.1 ? 5 : a >= 0.01 ? 6 : a >= 0.0001 ? 7 : 9;
+    return fmtN(p, d);
+  }
+  const pad = (n) => String(n).padStart(2, '0');
+  function fmtT(t, tf) {
+    const d = new Date(t);
+    const day = pad(d.getUTCDate()) + '/' + pad(d.getUTCMonth() + 1);
+    return tf === '1d' || tf === '1w' ? day : day + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+  }
+  const ago = (n) => n === 0 ? 'última vela fechada' : n === 1 ? 'há 1 vela' : 'há ' + n + ' velas';
+  const ENG = { 'rompimento': 'Rompimento', 'clímax': 'Clímax', 'clímax cfm': 'Clímax confirmado',
+    'seco': 'Volume seco', 'seco cfm': 'Volume seco confirmado' };
+  const REG = { 1: 'expansão alta', '-1': 'expansão baixa', 0: 'intervalo' };
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const nextAt = {};
+  async function slot(key, gap) {
+    const now = Date.now(), t = Math.max(now, nextAt[key] || 0);
+    nextAt[key] = t + gap;
+    if (t > now) await sleep(t - now);
+  }
+  async function get(key, urls, gap) {
+    urls = Array.isArray(urls) ? urls : [urls];
+    let last;
+    for (const url of urls) {
+      for (let a = 0; a < 3; a++) {
+        await slot(key, gap);
+        try {
+          const r = await fetch(url, { cache: 'no-store' });
+          if (r.status === 429 || r.status === 418) { last = new Error('limite de pedidos'); await sleep(4000 * (a + 1)); continue; }
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return await r.json();
+        } catch (e) {
+          last = e;
+          if (e instanceof TypeError) break;
+          await sleep(500 * (a + 1));
+        }
+      }
+    }
+    throw last || new Error('sem resposta');
+  }
+
+  function row(ex, sym, rawBase, qv, last) {
+    const m = rawBase.match(/^(1000000|100000|10000|1000|1M)(?=[A-Z])/);
+    return { ex, sym, raw: rawBase, base: m ? rawBase.slice(m[1].length) : rawBase, qv, last };
+  }
+  const usable = (r) => r.qv > 0 && r.base && !EXCL.has(r.base) && !/(UP|DOWN|BULL|BEAR)$/.test(r.raw) && !/\d[LS]$/.test(r.raw);
+
+  const BN_F = 'https://fapi.binance.com', BN_S = ['https://data-api.binance.vision', 'https://api.binance.com'];
+  const ADP = {
+    binance: {
+      max: 1000,
+      async tickers(m) {
+        if (m === 'fut') {
+          const [t, info] = await Promise.all([get('binance', BN_F + '/fapi/v1/ticker/24hr', 50), get('binance', BN_F + '/fapi/v1/exchangeInfo', 50)]);
+          const perp = new Set(info.symbols.filter((s) => s.contractType === 'PERPETUAL' && s.quoteAsset === 'USDT' && s.status === 'TRADING').map((s) => s.symbol));
+          return t.filter((x) => perp.has(x.symbol)).map((x) => row('binance', x.symbol, x.symbol.slice(0, -4), +x.quoteVolume, +x.lastPrice));
+        }
+        const t = await get('binance', BN_S.map((h) => h + '/api/v3/ticker/24hr'), 50);
+        return t.filter((x) => x.symbol.endsWith('USDT') && +x.count > 0).map((x) => row('binance', x.symbol, x.symbol.slice(0, -4), +x.quoteVolume, +x.lastPrice));
+      },
+      async klines(m, sym, tf, limit) {
+        const q = '?symbol=' + sym + '&interval=' + tf + '&limit=' + limit;
+        const raw = m === 'fut'
+          ? await get('binance', BN_F + '/fapi/v1/klines' + q, (limit >= 500 ? 5 : 2) * 30)
+          : await get('binance', BN_S.map((h) => h + '/api/v3/klines' + q), 25);
+        return raw.map((k) => { const v = +k[5]; return { t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v, d: 2 * +k[9] - v }; });
+      },
+    },
+    bybit: {
+      max: 1000,
+      async tickers(m) {
+        const j = await get('bybit', 'https://api.bybit.com/v5/market/tickers?category=' + (m === 'fut' ? 'linear' : 'spot'), 50);
+        return j.result.list.filter((x) => /^[A-Z0-9]+USDT$/.test(x.symbol)).map((x) => row('bybit', x.symbol, x.symbol.slice(0, -4), +x.turnover24h, +x.lastPrice));
+      },
+      async klines(m, sym, tf, limit) {
+        const iv = { '1h': '60', '4h': '240', '1d': 'D' }[tf];
+        const j = await get('bybit', 'https://api.bybit.com/v5/market/kline?category=' + (m === 'fut' ? 'linear' : 'spot') + '&symbol=' + sym + '&interval=' + iv + '&limit=' + limit, 50);
+        if (j.retCode !== 0) throw new Error(j.retMsg);
+        return j.result.list.map((k) => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] })).reverse();
+      },
+    },
+    okx: {
+      max: 1000,
+      async tickers(m) {
+        const j = await get('okx', 'https://www.okx.com/api/v5/market/tickers?instType=' + (m === 'fut' ? 'SWAP' : 'SPOT'), 110);
+        return j.data.filter((x) => (m === 'fut' ? /-USDT-SWAP$/ : /^[A-Z0-9]+-USDT$/).test(x.instId))
+          .map((x) => row('okx', x.instId, x.instId.split('-')[0], m === 'fut' ? +x.volCcy24h * +x.last : +x.volCcy24h, +x.last));
+      },
+      async klines(m, sym, tf, limit) {
+        const iv = { '1h': '1H', '4h': '4H', '1d': '1Dutc' }[tf];
+        const B = 'https://www.okx.com/api/v5/market/';
+        const q = '?instId=' + sym + '&bar=' + iv;
+        const map = (d) => d.map((k) => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: m === 'fut' ? +k[6] : +k[5] }));
+        const j = await get('okx', B + 'candles' + q + '&limit=300', 110);
+        if (j.code !== '0') throw new Error(j.msg);
+        let out = map(j.data);
+        for (let p = 0; p < 8 && out.length && out.length < limit; p++) {
+          const oldest = out[out.length - 1].t;
+          let hc;
+          try { hc = await get('okx', B + 'history-candles' + q + '&limit=100&after=' + oldest, 110); }
+          catch (e) { break; }
+          if (hc.code !== '0' || !Array.isArray(hc.data) || !hc.data.length) break;
+          const add = map(hc.data).filter((b) => b.t < oldest);
+          if (!add.length) break;
+          out = out.concat(add);
+        }
+        return out.slice(0, limit).reverse();
+      },
+    },
+    gate: {
+      max: 1000,
+      async tickers(m) {
+        if (m === 'fut') {
+          const j = await get('gate', 'https://api.gateio.ws/api/v4/futures/usdt/tickers', 60);
+          return j.filter((x) => x.contract.endsWith('_USDT')).map((x) => row('gate', x.contract, x.contract.slice(0, -5), +x.volume_24h_quote, +x.last));
+        }
+        const j = await get('gate', 'https://api.gateio.ws/api/v4/spot/tickers', 60);
+        return j.filter((x) => x.currency_pair.endsWith('_USDT')).map((x) => row('gate', x.currency_pair, x.currency_pair.slice(0, -5), +x.quote_volume, +x.last));
+      },
+      async klines(m, sym, tf, limit) {
+        if (m === 'fut') {
+          const j = await get('gate', 'https://api.gateio.ws/api/v4/futures/usdt/candlesticks?contract=' + sym + '&interval=' + tf + '&limit=' + limit, 60);
+          return j.map((k) => ({ t: k.t * 1000, o: +k.o, h: +k.h, l: +k.l, c: +k.c, v: +k.v || 0 }));
+        }
+        const j = await get('gate', 'https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=' + sym + '&interval=' + tf + '&limit=' + limit, 60);
+        return j.map((k) => ({ t: +k[0] * 1000, o: +k[5], h: +k[3], l: +k[4], c: +k[2], v: +k[6] }));
+      },
+    },
+    mexc: {
+      max: 1000,
+      async tickers(m) {
+        if (m === 'fut') {
+          const j = await get('mexc', 'https://contract.mexc.com/api/v1/contract/ticker', 120);
+          return j.data.filter((x) => x.symbol.endsWith('_USDT')).map((x) => row('mexc', x.symbol, x.symbol.slice(0, -5), +x.amount24, +x.lastPrice));
+        }
+        const j = await get('mexc', 'https://api.mexc.com/api/v3/ticker/24hr', 60);
+        return j.filter((x) => x.symbol.endsWith('USDT')).map((x) => row('mexc', x.symbol, x.symbol.slice(0, -4), +x.quoteVolume, +x.lastPrice));
+      },
+      async klines(m, sym, tf, limit) {
+        if (m === 'fut') {
+          const iv = { '1h': 'Min60', '4h': 'Hour4', '1d': 'Day1' }[tf];
+          const end = Math.floor(Date.now() / 1000), start = end - limit * TFMS[tf] / 1000;
+          const j = await get('mexc', 'https://contract.mexc.com/api/v1/contract/kline/' + sym + '?interval=' + iv + '&start=' + start + '&end=' + end, 120);
+          const d = j.data;
+          return d.time.map((t, i) => ({ t: t * 1000, o: +d.open[i], h: +d.high[i], l: +d.low[i], c: +d.close[i], v: +d.vol[i] }));
+        }
+        const iv = { '1h': '60m', '4h': '4h', '1d': '1d' }[tf];
+        const j = await get('mexc', 'https://api.mexc.com/api/v3/klines?symbol=' + sym + '&interval=' + iv + '&limit=' + limit, 60);
+        return j.map((k) => ({ t: +k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] }));
+      },
+    },
+  };
+
+  async function universe(market, exSel, topN, status) {
+    const exs = exSel === 'all' ? Object.keys(ADP) : [exSel];
+    const res = await Promise.allSettled(exs.map((e) => ADP[e].tickers(market)));
+    const byBase = new Map();
+    res.forEach((r, i) => {
+      const ex = exs[i];
+      if (r.status !== 'fulfilled') { status[ex] = -1; return; }
+      const rows = r.value.filter(usable);
+      status[ex] = rows.length;
+      for (const x of rows) { if (!byBase.has(x.base)) byBase.set(x.base, []); byBase.get(x.base).push(x); }
+    });
+    if (!byBase.size) return [];
+    for (const list of byBase.values()) list.sort((a, b) => b.qv - a.qv);
+
+    const out = [], taken = new Set();
+    try {
+      const seen = new Set();
+      for (let page = 1; page <= 4 && out.length < topN; page++) {
+        const cg = await get('cg', 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=' + page, 2500);
+        if (!Array.isArray(cg) || !cg.length) break;
+        for (const c of cg) {
+          const s = String(c.symbol || '').toUpperCase();
+          if (seen.has(s)) continue;
+          seen.add(s);
+          const cands = byBase.get(s);
+          if (!cands || EXCL.has(s)) continue;
+          out.push({ base: s, rank: c.market_cap_rank, name: c.name, cands });
+          taken.add(s);
+          if (out.length >= topN) break;
+        }
+      }
+      status.cg = 1;
+    } catch (e) { status.cg = -1; }
+    if (out.length < topN) {
+      const rest = [...byBase.entries()].filter(([b]) => !taken.has(b))
+        .map(([base, cands]) => ({ base, rank: null, name: base, cands, tot: cands.reduce((s, x) => s + x.qv, 0) }))
+        .sort((a, b) => b.tot - a.tot);
+      out.push(...rest.slice(0, topN - out.length));
+    }
+    return out;
+  }
+
+  async function analyseOn(cand, market, tf) {
+    const A = ADP[cand.ex];
+    let chart, htf, tfMs;
+    if (tf === '1h' || tf === '4h') {
+      [chart, htf] = await Promise.all([A.klines(market, cand.sym, tf, Math.min(A.max, 499)), A.klines(market, cand.sym, '1d', Math.min(A.max, 300))]);
+      tfMs = TFMS[tf];
+    } else {
+      const daily = await A.klines(market, cand.sym, '1d', A.max);
+      daily.sort((a, b) => a.t - b.t);
+      if (tf === '1d') { chart = daily; htf = null; tfMs = DAY; }
+      else { chart = V14R.aggregate(daily, WEEK); htf = V14R.aggregate(daily, MONTH); tfMs = WEEK; }
+    }
+    chart.sort((a, b) => a.t - b.t);
+    if (htf) htf.sort((a, b) => a.t - b.t);
+    const now = Date.now();
+    const closed = chart.filter((b) => b.t + tfMs <= now);
+    const live = chart.length > closed.length ? chart[chart.length - 1] : null;
+    if (closed.length < MIN_BARS) return null;
+    return { r: V14R.run(closed, tfMs, htf || undefined, { minQuality: cfg.minQuality, hardHideTop: cfg.hardHideTop }), live, cand };
+  }
+  async function analyse(coin, market, tf) {
+    let err = null;
+    for (const cand of coin.cands) {
+      try { const x = await analyseOn(cand, market, tf); if (x) return x; }
+      catch (e) { err = e; }
+    }
+    if (err) throw err;
+    return null;
+  }
+
+  const runKey = () => [cfg.market, cfg.ex, cfg.tf, cfg.top, cfg.minQuality, cfg.hardHideTop ? 1 : 0].join('|');
+  async function scan() {
+    if (running) return;
+    running = true;
+    const key = runKey(), tf = cfg.tf, market = cfg.market, exSel = cfg.ex, topN = cfg.top;
+    const prevKeys = new Set(data && data.key === key ? data.signals.map((s) => s.id) : []);
+    const hadPrev = !!(data && data.key === key);
+    $('#go').disabled = true; $('#go').textContent = 'A analisar…';
+    $('#prog').hidden = false; setProg(0, 1, 'a ler o ranking e as exchanges…');
+
+    const status = {};
+    let uni = [];
+    try { uni = await universe(market, exSel, topN, status); } catch (e) { uni = []; }
+    if (!uni.length) {
+      $('#progtxt').innerHTML = '<span class="err">Nenhuma exchange respondeu. Se estás a ver isto dentro da app do Claude, abre o ficheiro no Chrome: a pré-visualização do Claude bloqueia a internet. Se já estás no Chrome, verifica a ligação ou escolhe outra exchange.</span>';
+      $('#barfill').style.width = '0';
+      running = false; $('#go').disabled = false; $('#go').textContent = 'Analisar agora';
+      return;
+    }
+
+    const out = []; let done = 0, fails = 0, short = 0;
+    const queue = uni.slice();
+    async function worker() {
+      while (queue.length) {
+        const coin = queue.shift();
+        try {
+          const x = await analyse(coin, market, tf);
+          if (!x) short++;
+          else {
+            for (const s of x.r.signals) {
+              if (s.barsAgo >= MAX_WIN) continue;
+              let outcome = s.outcome;
+              if (outcome === 'aberto' && x.live) {
+                const hitS = s.side === 'BUY' ? x.live.l <= s.stop : x.live.h >= s.stop;
+                const hitT = s.side === 'BUY' ? x.live.h >= s.tp : x.live.l <= s.tp;
+                outcome = hitS ? 'SL' : hitT ? 'TP' : 'aberto';
+              }
+              const nowPx = x.live ? x.live.c : x.r.lastClose;
+              out.push({
+                id: x.cand.ex + '|' + x.cand.sym + '|' + s.side + '|' + s.t,
+                ex: x.cand.ex, sym: x.cand.sym, raw: x.cand.raw, base: coin.base, rank: coin.rank,
+                side: s.side, engine: s.engine, proof: s.proof, t: s.t, barsAgo: s.barsAgo, price: s.price, stop: s.stop, tp: s.tp,
+                rr: s.rr, tpStruct: s.tpStruct, regime: s.regime, outcome, now: nowPx, bars: x.r.bars, qual: s.qual,
+                move: (s.side === 'BUY' ? 1 : -1) * (nowPx - s.price) / s.price * 100,
+              });
+            }
+          }
+        } catch (e) { fails++; }
+        done++;
+        setProg(done, uni.length, coin.base);
+      }
+    }
+    await Promise.all(Array.from({ length: CONC }, worker));
+
+    for (const s of out) s.isNew = hadPrev && !prevKeys.has(s.id);
+    data = { key, at: Date.now(), market, ex: exSel, tf, analysed: uni.length - fails - short, total: uni.length, fails, short, status, signals: out };
+    store.set('radar.last.' + key, data);
+    running = false;
+    $('#go').disabled = false; $('#go').textContent = 'Analisar agora';
+    $('#prog').hidden = true;
+    render();
+  }
+  function setProg(d, n, label) {
+    $('#barfill').style.width = (100 * d / Math.max(1, n)).toFixed(1) + '%';
+    $('#progtxt').textContent = 'a analisar ' + d + '/' + n + (label ? ' · ' + label : '');
+  }
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const tvSym = (s, market) => EXTV[s.ex] + ':' + s.raw + 'USDT' + (market === 'fut' ? '.P' : '');
+  const TVIV = { '1h': '60', '4h': '240', '1d': 'D', '1w': 'W' };
+  function proofLine(s) {
+    if (!s.proof || !s.proof.length) return '';
+    let edge = false;
+    const parts = s.proof.map((p) => {
+      const e = isFinite(p.v) && (p.lte ? p.v > p.thr * 0.9 : p.v < p.thr * 1.1); if (e) edge = true;
+      const d = p.u === '%' ? 0 : 1;
+      return '<span class="' + (e ? 'edge' : '') + '">' + p.k + ' <b>' + fmtN(p.v, d) + p.u + '</b> (' + (p.lte ? '≤' : '≥') + fmtN(p.thr, p.thr % 1 ? 1 : 0) + ')</span>';
+    });
+    return '<div class="proof">' + parts.join(' · ') + (edge ? '<span class="tag">NO LIMITE</span>' : '') + '</div>';
+  }
+  function render() {
+    $('#sub').textContent = 'OB/FVG v14.5.1-R · ' + (cfg.ex === 'all' ? 'todas as exchanges' : EXNAME[cfg.ex]) + ' · ' + (cfg.market === 'fut' ? 'Futuros' : 'Spot') + ' · ' + TFNAME[cfg.tf];
+    const list = $('#list'), sum = $('#sum');
+    if (!data || data.key !== runKey()) {
+      sum.innerHTML = '';
+      list.innerHTML = '<div class="empty"><strong>Ainda não há análise para ' + TFNAME[cfg.tf] + '.</strong>Carrega em «Analisar agora». O Top 100 demora cerca de um minuto; o Top 500 até três.</div>';
+      $('#stamp').textContent = 'sem análise ainda';
+      return;
+    }
+    const mins = Math.round((Date.now() - data.at) / 60000);
+    $('#stamp').textContent = 'analisado ' + (mins < 1 ? 'agora' : 'há ' + mins + ' min') + ' · ' + fmtT(data.at, '1h') + ' UTC';
+
+    let rows = data.signals.filter((s) => s.barsAgo < cfg.win);
+    const nB = rows.filter((s) => s.side === 'BUY').length, nS = rows.length - nB;
+    const nA = rows.filter((s) => s.outcome === 'aberto').length;
+    if (cfg.side !== 'all') rows = rows.filter((s) => s.side === cfg.side);
+    if (cfg.active) rows = rows.filter((s) => s.outcome === 'aberto');
+    rows.sort((a, b) => a.barsAgo - b.barsAgo || (a.outcome === 'aberto' ? 0 : 1) - (b.outcome === 'aberto' ? 0 : 1) || (a.rank || 1e9) - (b.rank || 1e9));
+
+    const st = data.status || {};
+    const srcs = Object.keys(EXNAME).filter((e) => e in st).map((e) => st[e] >= 0 ? '<span class="ok">' + EXNAME[e] + ' ' + st[e] + '</span>' : '<span class="no">' + EXNAME[e] + ' sem resposta</span>');
+    srcs.push(st.cg === 1 ? '<span class="ok">CoinGecko ✓</span>' : '<span class="no">CoinGecko sem resposta (ranking por volume)</span>');
+    sum.innerHTML = '<div class="chips">' +
+      '<span class="chip b"><strong>' + nB + '</strong> SUPER BUY</span>' +
+      '<span class="chip s"><strong>' + nS + '</strong> SUPER SELL</span>' +
+      '<span class="chip"><strong>' + nA + '</strong> ativos</span>' +
+      '<span class="chip"><strong>' + data.analysed + '</strong>/' + data.total + ' moedas' + (data.fails ? ' · ' + data.fails + ' falhas' : '') + '</span></div>' +
+      '<div class="src">Fontes: ' + srcs.join(' · ') + '</div>';
+
+    if (!rows.length) {
+      const what = cfg.side === 'BUY' ? 'SUPER BUY' : cfg.side === 'SELL' ? 'SUPER SELL' : 'SUPER BUY nem SUPER SELL';
+      list.innerHTML = '<div class="empty"><strong>Nenhum ' + what + (cfg.active ? ' ativo' : '') + ' ' + (cfg.win === 1 ? 'na última vela' : 'nas últimas ' + cfg.win + ' velas') + ' de ' + TFNAME[cfg.tf] + '.</strong>Alarga a janela ou o número de moedas.</div>';
+      return;
+    }
+    list.innerHTML = rows.map((s) => {
+      const cls = s.side === 'BUY' ? 'buy' : 'sell';
+      const stt = s.outcome === 'TP' ? '<span class="state tp">TP atingido</span>' : s.outcome === 'SL' ? '<span class="state sl">SL atingido</span>' : '<span class="state">Ativo</span>';
+      const mv = isFinite(s.move) ? '<span class="pct ' + (s.move >= 0 ? 'up' : 'dn') + '">' + (s.move >= 0 ? '+' : '') + fmtN(s.move, 1) + '%</span>' : '';
+      const bars = s.bars ? ' · ' + (s.bars < THIN_BARS ? '<span class="thin">' + s.bars + ' velas</span>' : s.bars + ' velas') : '';
+      return '<article class="sig ' + cls + '">' +
+        '<div class="sig-top"><div class="who"><span class="base">' + esc(s.base) + '</span>' +
+          '<span class="pair">' + esc(s.raw) + 'USDT · <span class="ex">' + EXNAME[s.ex] + '</span>' + (s.rank ? ' · MC# ' + s.rank : '') + '</span></div>' +
+        '<div class="badges">' + (s.isNew ? '<span class="new">NOVO</span>' : '') + '<span class="badge">⚡ SUPER ' + s.side + '</span></div></div>' +
+        '<div class="meta">' + TFNAME[data.tf] + ' · <span class="eng">' + ENG[s.engine] + '</span> · ' + ago(s.barsAgo) + ' · ' + fmtT(s.t, data.tf) + ' UTC · ' + REG[s.regime] + ' · q' + (s.qual != null ? s.qual : '—') + bars + '</div>' + proofLine(s) +
+        '<dl class="nums">' +
+          '<div><dt>Entrada</dt><dd>' + fmtP(s.price) + '</dd></div>' +
+          '<div class="sl"><dt>SL</dt><dd>' + fmtP(s.stop) + '</dd></div>' +
+          '<div class="tp"><dt>TP · ' + fmtN(s.rr, 1) + 'R' + (s.tpStruct ? '' : '*') + '</dt><dd>' + fmtP(s.tp) + '</dd></div>' +
+          '<div><dt>Agora</dt><dd>' + fmtP(s.now) + mv + '</dd></div>' +
+        '</dl>' +
+        '<div class="foot">' + stt + '<a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(tvSym(s, data.market)) + '&interval=' + TVIV[data.tf] + '" target="_blank" rel="noopener">Abrir no TradingView ↗</a></div>' +
+        '</article>';
+    }).join('');
+  }
+
+  function syncControls() {
+    for (const b of document.querySelectorAll('#tf button')) b.setAttribute('aria-pressed', String(b.dataset.v === cfg.tf));
+    for (const b of document.querySelectorAll('#side button')) b.setAttribute('aria-pressed', String(b.dataset.v === cfg.side));
+    $('#ex').value = cfg.ex; $('#market').value = cfg.market; $('#top').value = String(cfg.top); $('#win').value = String(cfg.win);
+    $('#qual').value = String(cfg.minQuality);
+    $('#auto').checked = !!cfg.auto; $('#active').checked = !!cfg.active; $('#hard').checked = !!cfg.hardHideTop;
+  }
+  function saveCfg() { store.set('radar.cfg', cfg); }
+  function loadCached() { const c = store.get('radar.last.' + runKey()); data = c && c.signals ? c : null; }
+  function changed(rescan) { saveCfg(); syncControls(); if (rescan) { loadCached(); render(); scan(); } else render(); }
+  const sel = (id, k, num) => $(id).addEventListener('change', (e) => {
+    if (running) { syncControls(); return; }
+    cfg[k] = num ? +e.target.value : e.target.value; changed(true);
+  });
+
+  $('#tf').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || running) return; cfg.tf = b.dataset.v; changed(true); });
+  $('#side').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; cfg.side = b.dataset.v; changed(false); });
+  sel('#ex', 'ex'); sel('#market', 'market'); sel('#top', 'top', true);
+  $('#win').addEventListener('change', (e) => { cfg.win = +e.target.value; changed(false); });
+  $('#active').addEventListener('change', (e) => { cfg.active = e.target.checked; changed(false); });
+  $('#qual').addEventListener('change', (e) => { if (running) { syncControls(); return; } cfg.minQuality = +e.target.value; changed(true); });
+  $('#hard').addEventListener('change', (e) => { if (running) { syncControls(); return; } cfg.hardHideTop = e.target.checked; changed(true); });
+  $('#auto').addEventListener('change', (e) => { cfg.auto = e.target.checked; saveCfg(); });
+  $('#go').addEventListener('click', () => scan());
+
+  setInterval(() => {
+    if (cfg.auto && !running && document.visibilityState === 'visible' && (!data || Date.now() - data.at >= AUTO_MS)) scan();
+    else if (data) render();
+  }, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && cfg.auto && !running && data && Date.now() - data.at >= AUTO_MS) scan();
+  });
+
+  $('#note').textContent =
+    'Sinais calculados com a lógica do OB/FVG v14.5.1-R e os parâmetros por defeito, só em velas fechadas. SUPER BUY: rompimento ou clímax de fundo, ' +
+    'igual ao v14-R. SUPER SELL: rompimento, clímax de topo ou o segundo caminho do v14.5 — volume seco (≤0,7× a média) com a média de volume a encolher — ' +
+    'mais o travão de um topo por oscilação, que rearma quando o preço fecha abaixo do mínimo do sinal, faz um máximo acima dele, ou ao fim de 10 barras. ' +
+    'O filtro de liquidações do topo não foi transposto porque no Pine está desligado por defeito. A coluna do motor diz qual dos caminhos disparou, ' +
+    'para poderes medir os dois em separado. O resto mantém-se: ' +
+    'com a mesma porta de reentrada, zonas OB/FVG, regime e filtro do timeframe superior. Ranking por capitalização da CoinGecko; em «Todas», cada moeda usa as velas ' +
+    'da exchange onde tem mais volume (se falhar, passa à seguinte). Diferenças conhecidas para o TradingView: o CVD usa o volume taker na Binance e o delta ' +
+    'geométrico nas outras exchanges (o fallback do próprio v14-R). SL e TP como na etiqueta do indicador ' +
+    '(TP com * = sem nível estrutural: alvo de 2R, no máximo 12 ATR). Cada sinal mostra as provas com o limite do v14-R; «NO LIMITE» = uma delas passa por menos de 10%, ' +
+    'e noutra exchange ou noutro timeframe a mesma vela pode ficar só como reversão. ' +
+    'TODAS AS HORAS SÃO UTC — é o fuso que o TradingView usa por defeito em cripto. Confirma que o teu gráfico está em «Exchange» ou «UTC», senão o sinal aparece-te na vela ao lado. ' +
+    'O «q» de cada sinal é a qualidade do Pine: 90 num clímax, entre 67 e 91 num rompimento. A app aplica agora o mesmo corte de qualidade e o mesmo veto 6+ do indicador, ' +
+    'por isso põe esses dois controlos iguais aos das definições do teu gráfico (grupos QUALIDADE e FILTRO DE FAMÍLIA) ou os sinais não batem certo. ' +
+    'O número de velas aparece em cada sinal e fica a vermelho abaixo de 400: ' +
+    'o motor arrasta estado desde a primeira barra (regime e arrefecimento), por isso menos histórico pode dar um resultado diferente do TradingView, que carrega muito mais. ' +
+    'A OKX pagina o histórico antigo para igualar as outras praças. A app nunca lista reversões nem continuações. «TP/SL atingido» = o primeiro a ser tocado depois do sinal; se forem os dois na mesma vela, ' +
+    'conta o SL. Não é aconselhamento de investimento.';
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+    });
+  }
+
+  syncControls(); loadCached(); render(); scan();
+})();
+</script>
+</body>
+</html>
